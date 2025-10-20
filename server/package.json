@@ -1,9 +1,0 @@
-{
-  "devDependencies": {
-    "@types/node": "^24.5.2",
-    "prisma": "^6.16.2"
-  },
-  "dependencies": {
-    "@nestjs/mapped-types": "^2.1.0"
-  }
-}
