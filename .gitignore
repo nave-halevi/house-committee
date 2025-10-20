@@ -43,3 +43,7 @@ Thumbs.db
 *.seed
 *.pid.lock
 
+
+# Backend build & env
+server/my-app/dist/
+server/my-app/.env
