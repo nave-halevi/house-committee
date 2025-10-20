@@ -20,25 +20,54 @@ export default function LoginScreen() {
     clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     scopes: ['openid', 'profile', 'email'],
     redirectUri: 'https://auth.expo.io/@nave_lev/house-committee',
-
   });
-  console.log('🔗 redirectUri:', request?.redirectUri);
+
+  // דיבוג: לוודא שה-env וה-redirect נטענים
+  console.log('ENV clientId starts with:', process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.slice(0, 10));
+  console.log('🔗 redirectUri (computed):', request?.redirectUri);
 
   useEffect(() => {
-    if (!navigated && response?.type === 'success' && response.authentication?.accessToken) {
-      setNavigated(true);
-      const accessToken = response.authentication.accessToken;
-      setToken(accessToken);
-      router.replace('/(tabs)/home');
+    // לוג מלא של התגובה מה-Auth (יכול להיות null עד שהמשתמש חוזר)
+    console.log('🔍 Google response (raw):', JSON.stringify(response));
+
+    if (navigated) return;
+
+    if (response?.type === 'success') {
+      // לפעמים הטוקן ב-authentication:
+      let token = response.authentication?.accessToken;
+      // לפעמים (במימושים מסוימים) הטוקן מגיע ב-params:
+      token = token ?? response?.params?.access_token ?? response?.params?.id_token;
+
+      if (token) {
+        console.log('✅ Got token (length):', String(token).length);
+        setNavigated(true);
+        setToken(token);
+        router.replace('/(tabs)/home');
+      } else {
+        console.log('⚠️ Success without token payload:', response);
+        setError('Signed in but did not receive a token. Check Google client/flows.');
+      }
     } else if (response?.type === 'error') {
-      setError('Google sign-in canceled or failed');
+      console.log('❌ Google error details:', response?.error || response?.params);
+      setError('Google sign-in failed');
     }
   }, [response, navigated, setToken, router]);
 
-  const onGooglePress = () => {
+  const onGooglePress = async () => {
     setError('');
     setIsBusy(true);
-    promptAsync().finally(() => setIsBusy(false));
+    try {
+      console.log('🔘 request ready:', !!request);
+      console.log('👉 Calling promptAsync');
+      const res = await promptAsync();
+      console.log('🔁 prompt result:', JSON.stringify(res));
+      // success/cancel/error — הטיפול הסופי נעשה ב-useEffect
+    } catch (e) {
+      console.log('💥 prompt exception:', e);
+      setError('Sign-in failed (exception)');
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   return (
@@ -48,7 +77,7 @@ export default function LoginScreen() {
 
       <Pressable
         style={[styles.btn, (!request || isBusy) && styles.btnDisabled]}
-        onPress={() => promptAsync()}
+        onPress={onGooglePress}
         disabled={!request || isBusy}
       >
         <Text style={styles.btnText}>התחבר עם Google</Text>
